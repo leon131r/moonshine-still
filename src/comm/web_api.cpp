@@ -179,8 +179,26 @@ bool WebAPI::begin(uint16_t port,
                 nullptr,
                 [this](AsyncWebServerRequest* request, uint8_t* data,
                        size_t len, size_t index, size_t total) {
+        Serial.printf("[HTTP] /api/command: len=%u, index=%u, total=%u\n", len, index, total);
+        
+        // Проверка размера — защита от переполнения буфера
+        if (total > 4096) {
+            Serial.println("[HTTP] /api/command: payload too large!");
+            request->send(413, "text/plain", "Too Large");
+            return;
+        }
+        
         JsonDocument doc;
+        
+        // Выводим сырые данные для отладки
+        if (len > 0 && len < 512) {
+            data[len] = '\0';
+            Serial.printf("[HTTP] /api/command raw: %s\n", (char*)data);
+        }
+        
         DeserializationError err = deserializeJson(doc, data, len);
+        Serial.printf("[HTTP] /api/command deserializeJson: %s\n", err.c_str());
+        
         if (err) {
             request->send(400, "application/json",
                           "{\"error\":\"invalid_json\"}");
@@ -231,7 +249,10 @@ bool WebAPI::begin(uint16_t port,
             for (int i = 0; i < maxNetworks; i++) {
                 JsonObject net = networks.add<JsonObject>();
                 String ssid = WiFi.SSID(i);
+                ssid.replace("\\", "\\\\");
                 ssid.replace("\"", "\\\"");
+                ssid.replace("\n", "\\n");
+                ssid.replace("\r", "\\r");
                 net["ssid"] = ssid;
                 net["rssi"] = WiFi.RSSI(i);
                 net["auth"] = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "wpa";
@@ -267,7 +288,10 @@ bool WebAPI::begin(uint16_t port,
             for (int i = 0; i < maxNetworks; i++) {
                 JsonObject net = networks.add<JsonObject>();
                 String ssid = WiFi.SSID(i);
+                ssid.replace("\\", "\\\\");
                 ssid.replace("\"", "\\\"");
+                ssid.replace("\n", "\\n");
+                ssid.replace("\r", "\\r");
                 net["ssid"] = ssid;
                 net["rssi"] = WiFi.RSSI(i);
                 net["auth"] = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "wpa";
@@ -290,8 +314,23 @@ bool WebAPI::begin(uint16_t port,
                 nullptr,
                 [](AsyncWebServerRequest* request, uint8_t* data,
                        size_t len, size_t index, size_t total) {
+        Serial.printf("[WIFI-SAVE] len=%u, total=%u\n", len, total);
+        
+        if (total > 2048) {
+            Serial.println("[WIFI-SAVE] Payload too large!");
+            request->send(413, "text/plain", "Too Large");
+            return;
+        }
+        
+        // Выводим сырые данные для отладки
+        if (len > 0 && len < 512) {
+            data[len] = '\0';
+            Serial.printf("[WIFI-SAVE] raw: %s\n", (char*)data);
+        }
+        
         JsonDocument doc;
         DeserializationError err = deserializeJson(doc, data, len);
+        Serial.printf("[WIFI-SAVE] deserializeJson: %s\n", err.c_str());
         if (err) {
             Serial.printf("[WIFI-SAVE] JSON error: %s\n", err.c_str());
             request->send(400, "application/json",
@@ -335,8 +374,22 @@ bool WebAPI::begin(uint16_t port,
                 nullptr,
                 [](AsyncWebServerRequest* request, uint8_t* data,
                        size_t len, size_t index, size_t total) {
+        Serial.printf("[MQTT-SAVE] len=%u, total=%u\n", len, total);
+        
+        if (total > 2048) {
+            Serial.println("[MQTT-SAVE] Payload too large!");
+            request->send(413, "text/plain", "Too Large");
+            return;
+        }
+        
+        if (len > 0 && len < 512) {
+            data[len] = '\0';
+            Serial.printf("[MQTT-SAVE] raw: %s\n", (char*)data);
+        }
+        
         JsonDocument doc;
         DeserializationError err = deserializeJson(doc, data, len);
+        Serial.printf("[MQTT-SAVE] deserializeJson: %s\n", err.c_str());
         if (err) {
             Serial.printf("[MQTT-SAVE] JSON error: %s\n", err.c_str());
             request->send(400, "application/json",
@@ -799,8 +852,10 @@ void WebAPI::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
         AwsFrameInfo* info = (AwsFrameInfo*)arg;
         if (info->opcode == WS_TEXT && info->final) {
             data[len] = '\0';
+            Serial.printf("[WS] Received: len=%u, data=%s\n", len, (char*)data);
             JsonDocument doc;
             DeserializationError err = deserializeJson(doc, (char*)data, len);
+            Serial.printf("[WS] deserializeJson: %s\n", err.c_str());
             if (err) {
                 getInstance().sendWsResponse(client, false, "Invalid JSON");
                 return;

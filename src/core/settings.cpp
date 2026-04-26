@@ -101,9 +101,16 @@ bool SettingsManager::load() {
     buf[len] = '\0';
     f.close();
 
+    // Отладочный вывод JSON-строки (обрезаем для Serial)
+    Serial.printf("[SETTINGS] File loaded: %u bytes\n", len);
+    if (len > 0 && len < 1024) {
+        Serial.printf("[SETTINGS] JSON preview: %.256s...\n", (char*)buf);
+    }
+
     // Парсим JSON
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, (const char*)buf);
+    Serial.printf("[SETTINGS] deserializeJson result: %s\n", err.c_str());
     free(buf);
 
     if (err) {
@@ -433,7 +440,31 @@ bool SettingsManager::save() {
     }
 
     serializeJsonPretty(doc, f);
+    Serial.printf("[SETTINGS] Serialized %u bytes to file\n", f.size());
     f.close();
+
+    // Верификация: перечитываем что записали
+    File fv = LittleFS.open(file_path_, "r");
+    if (fv) {
+        size_t verify_len = fv.size();
+        char verify_buf[256];
+        size_t to_read = (verify_len < sizeof(verify_buf) - 1) ? verify_len : sizeof(verify_buf) - 1;
+        fv.readBytes(verify_buf, to_read);
+        verify_buf[to_read] = '\0';
+        Serial.printf("[SETTINGS] Verification read: %u bytes\n", verify_len);
+        if (verify_len < 512) {
+            Serial.printf("[SETTINGS] Verify content: %s\n", verify_buf);
+        }
+        fv.close();
+        
+        if (verify_len == 0) {
+            Serial.println("[SETTINGS] ERROR: File is empty after write!");
+            return false;
+        }
+    } else {
+        Serial.println("[SETTINGS] ERROR: Cannot verify written file");
+        return false;
+    }
 
     // Обновляем mtime
     File f2 = LittleFS.open(file_path_, "r");

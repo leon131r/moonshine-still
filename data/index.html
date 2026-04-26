@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moonshine Controller</title>
+    <link rel="stylesheet" href="style.css?v=9">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-dim: #8b949e;
+            --accent: #238636;
+            --accent-hover: #2ea043;
+            --danger: #da3633;
+            --warning: #d29922;
+            --info: #58a6ff;
+            --heads: #a371f7;
+        }
+        body { font-family: -apple-system,BlinkMacSystemFont,sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        
+        /* Header */
+        header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+        .status-dot.on { background: var(--accent); }
+        .mode-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: var(--info); color: #fff; }
+        .mode-badge.dist { background: #9e6a03; }
+        .header-right { font-size: 14px; color: var(--text-dim); }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; padding: 8px 16px; background: var(--card); border-bottom: 1px solid var(--border); }
+        .tab { padding: 8px 16px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; border-radius: 6px; font-size: 14px; transition: all 0.2s; }
+        .tab:hover { color: var(--text); background: var(--border); }
+        .tab.active { background: var(--accent); color: #fff; }
+        
+        /* Sub tabs */
+        .sub-tabs { display: flex; gap: 4px; padding: 8px 0; background: transparent; border-bottom: none; }
+        .sub-tabs .tab { padding: 6px 12px; font-size: 13px; }
+        
+        /* Content */
+        .content { padding: 16px; }
+        .tab-content, .sub-content { display: none; }
+        .tab-content.active, .sub-content.active { display: block; }
+        
+        /* Cards */
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+        .card h3 { font-size: 12px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; }
+        
+        /* Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        
+        /* Controls */
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-warning { background: var(--warning); color: #000; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        
+        /* Form elements */
+        .form-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+        .form-row label { font-size: 13px; color: var(--text-dim); }
+        input, select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        input[type="checkbox"] { width: 16px; height: 16px; }
+        
+        /* Temp display */
+        .temp-box { padding: 12px; background: var(--bg); border-radius: 8px; text-align: center; }
+        .temp-value { font-size: 24px; font-weight: 600; }
+        .temp-setpoint { font-size: 14px; color: var(--text-dim); }
+        .temp-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-top: 4px; }
+        
+        /* Progress bar */
+        .progress { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.3s; }
+        
+        /* Logs table */
+        .logs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .logs-table th, .logs-table td { padding: 8px; text-align: left; border-bottom: 1px solid var(--border); }
+        .logs-table th { color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+        
+        /* Toast notifications */
+        #toasts { position: fixed; bottom: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; animation: slideIn 0.3s ease; }
+        .toast.ok { border-left: 3px solid var(--accent); }
+        .toast.err { border-left: 3px solid var(--danger); }
+        .toast.info { border-left: 3px solid var(--info); }
+        
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        /* Canvas for charts */
+        #chartCanvas { width: 100%; height: 300px; background: var(--bg); border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-left">
+            <div class="header-status">
+                <div id="wsDot" class="status-dot"></div>
+                <span id="wsText">WS</span>
+            </div>
+            <div id="modeBadge" class="mode-badge">RECTIFICATION</div>
+            <div id="phaseBadge" class="mode-badge" style="background: var(--info)">IDLE</div>
+        </div>
+        <div class="header-right">
+            <div id="fillIndicator" style="display:flex;align-items:center;gap:8px;">
+                <div class="progress" style="width:80px;height:10px;">
+                    <div id="headerFillBar" class="progress-bar" style="width:0%;background:var(--accent)"></div>
+                </div>
+                <span id="headerFillPct" style="font-size:12px;">0%</span>
+            </div>
+            <span id="uptime" style="margin-left:12px;">00:00:00</span>
+        </div>
+    </header>
+    
+    <!-- Mode switch -->
+    <div style="padding:8px 16px;background:var(--card);border-bottom:1px solid var(--border);display:flex;gap:16px;align-items:center;">
+        <span style="font-size:12px;color:var(--text-dim)">РЕЖИМ:</span>
+        <label><input type="radio" name="mode" value="rectification" checked> Ректификация</label>
+        <label><input type="radio" name="mode" value="distillation"> Дистилляция</label>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" data-tab="dashboard">Дашборд</button>
+        <button class="tab" data-tab="graphs">Графики</button>
+        <button class="tab" data-tab="containers">Ёмкости</button>
+        <button class="tab" data-tab="settings">Настройки</button>
+    </div>
+    
+    <!-- Content -->
+    <main class="content">
+        <!-- ===== DASHBOARD ===== -->
+        <section class="tab-content active" id="tab-dashboard">
+            <!-- Controls -->
+            <div class="card">
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="btnStart">СТАРТ</button>
+                    <button class="btn" id="btnStop">СТОП</button>
+                    <button class="btn btn-danger" id="btnEmergency">ЭКСТР. СТОП</button>
+                    <button class="btn btn-warning" id="btnResetError">СБРОС АВАРИИ</button>
+                    <button class="btn btn-warning" id="btnNextPhase">СЛЕД. ФАЗА</button>
+                </div>
+            </div>
+            
+            <!-- Temperatures -->
+            <div class="card">
+                <h3>Температуры</h3>
+                <div class="grid">
+                    <div class="temp-box">
+                        <div class="temp-value" id="tempTop">--.-°C</div>
+                        <div class="temp-label">Т1 Верх</div>
+                    </div>
+                    <div class="temp-box">
+                        <div class="temp-value" id="tempSelect">--.-°C</div>
+                        <div class="temp-label">Т2 Узел отбора</div>
+                    </div>
+                    <div class="temp-box">
+                        <div class="temp-value" id="deltaT">--</div>
+                        <div class="temp-label">ΔT</div>
+                    </div>
+                    <div class="temp-box">
+                        <div class="temp-value" id="tempBoiler">--.-°C</div>
+                        <div class="temp-label">Т4 Куб</div>
+                    </div>
+                    <div class="temp-box">
+                        <div class="temp-value" id="tempCooler">--.-°C</div>
+                        <div class="temp-label">Охладитель</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Heater & Cooler -->
+            <div class="grid">
+                <div class="card">
+                    <h3>Нагрев (куб)</h3>
+                    <div class="progress" style="margin-bottom: 8px">
+                        <div id="heaterBar" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span>Мощность: <strong id="heaterPower">0%</strong></span>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Охлаждение</h3>
+                    <div class="progress" style="margin-bottom: 8px">
+                        <div id="coolerBar" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span>Вентилятор: <strong id="coolerPower">0%</strong></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Collection controls -->
+            <div class="card">
+                <h3>Отбор</h3>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-warning" id="btnStopCollect">ОСТАНОВИТЬ ОТБОР</button>
+                    <button class="btn btn-sm btn-primary" id="btnResumeCollect" style="display:none">ПРОДОЛЖИТЬ ОТБОР</button>
+                    <select id="selContainer" style="min-width:150px;">
+                        <option value="">— Выберите ёмкость —</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Collection & Level Sensor -->
+            <div class="grid">
+                <div class="card">
+                    <h3>Ёмкость <span id="containerName"></span></h3>
+                    <div class="progress" style="margin-bottom: 8px">
+                        <div id="volumeBar" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div style="font-size: 13px; margin-bottom: 8px;">
+                        <strong id="volumeMl">0</strong> мл / <span id="capacityMl">1000</span> мл (<span id="volumePct">0</span>%)
+                    </div>
+                    <div class="grid" style="font-size: 12px; color: var(--text-dim)">
+                        <div>Крепос��ь: <strong id="abv" style="color: var(--text)">--</strong>%</div>
+                        <div>Скорость: <strong id="rate" style="color: var(--text)">--</strong> мл/мин</div>
+                        <div>Сеанс: <strong id="sessionMl" style="color: var(--text)">--</strong> мл</div>
+                    </div>
+                    <div class="btn-group" style="margin-top: 12px">
+                        <button class="btn btn-sm btn-warning" id="btnContinue" style="display:none">Продолжить</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Датчик уровня (ESP-NOW)</h3>
+                    <div class="grid" style="font-size: 12px">
+                        <div>Уровень: <strong id="levelMm" style="color: var(--text)">--</strong> мм</div>
+                        <div>Крепость: <strong id="abvSensor" style="color: var(--text)">--</strong>%</div>
+                        <div>Давление: <strong id="pressureSensor" style="color: var(--text)">--</strong> гПа</div>
+                    </div>
+                    <h3 style="margin-top: 12px">Связь</h3>
+                    <div class="grid" style="font-size: 12px">
+                        <div>Газ-блок: <span id="gasStatus" style="color: var(--danger)">○</span></div>
+                        <div>Уровень: <span id="levelStatus" style="color: var(--danger)">○</span></div>
+                        <div>MQTT: <span id="mqttStatus" style="color: var(--danger)">○</span></div>
+                        <div>Ошибки: <strong id="errorCount">0</strong></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ===== GRAPHS ===== -->
+        <section class="tab-content" id="tab-graphs">
+            <div class="card">
+                <h3>Графики</h3>
+                <div class="btn-group" style="margin-bottom: 12px">
+                    <button class="btn btn-sm active" id="btnChartTemps">Температуры</button>
+                    <button class="btn btn-sm" id="btnChartPid">PID Выход</button>
+                    <button class="btn btn-sm" id="btnChartVolume">Объём</button>
+                </div>
+                <canvas id="chartCanvas"></canvas>
+            </div>
+        </section>
+        
+        <!-- ===== CONTAINERS ===== -->
+        <section class="tab-content" id="tab-containers">
+            <div class="card">
+                <h3>Список ёмкостей</h3>
+                <table class="logs-table" id="containersTable">
+                    <thead><tr><th>Название</th><th>Объём, мл</th><th>Диаметр, мм</th><th>Действия</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h3>Добавить ёмкость</h3>
+                <div class="grid-2">
+                    <div class="form-row"><label>Название</label><input type="text" id="newContainerName" placeholder="Банка 1Л"></div>
+                    <div class="form-row"><label>Объём, мл</label><input type="number" id="newContainerVolume" placeholder="1000"></div>
+                    <div class="form-row"><label>Диаметр, мм</label><input type="number" id="newContainerDiameter" placeholder="100"></div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="btnAddContainer">Добавить</button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ===== SETTINGS ===== -->
+        <section class="tab-content" id="tab-settings">
+            <div class="sub-tabs">
+                <button class="tab active" data-sub="automation">Автоматизация</button>
+                <button class="tab" data-sub="config">Конфигурация</button>
+                <button class="tab" data-sub="network">Сетевые</button>
+            </div>
+            
+            <!-- Automation -->
+            <div class="sub-content active" id="sub-automation">
+                <div class="card">
+                    <h3>PID Куба</h3>
+                    <div class="grid-2">
+                        <div class="form-row"><label>Kp</label><input type="number" id="pidBoilerKp" step="0.1" value="2.0"></div>
+                        <div class="form-row"><label>Ki</label><input type="number" id="pidBoilerKi" step="0.1" value="0.5"></div>
+                        <div class="form-row"><label>Kd</label><input type="number" id="pidBoilerKd" step="0.1" value="1.0"></div>
+                        <div class="form-row"><label>Out %</label><input type="number" id="pidBoilerOut" value="100"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>PID Охлаждения</h3>
+                    <div class="grid-2">
+                        <div class="form-row"><label>Kp</label><input type="number" id="pidCoolerKp" step="0.1" value="3.0"></div>
+                        <div class="form-row"><label>Ki</label><input type="number" id="pidCoolerKi" step="0.1" value="0.3"></div>
+                        <div class="form-row"><label>Kd</label><input type="number" id="pidCoolerKd" step="0.1" value="1.5"></div>
+                        <div class="form-row"><label>Out %</label><input type="number" id="pidCoolerOut" value="100"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Переход фаз</h3>
+                    <div class="form-row">
+                        <label><input type="radio" name="transition" value="manual"> Ручной</label>
+                        <label><input type="radio" name="transition" value="deltatemp" checked> По ΔT</label>
+                        <label><input type="radio" name="transition" value="volume"> По объёму</label>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-row"><label>ΔT Головы→Тело</label><input type="number" id="thresholdHeads" step="0.1" value="1.2"></div>
+                        <div class="form-row"><label>ΔT Тело→Хвосты</label><input type="number" id="thresholdBody" step="0.1" value="0.3"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Температуры (уставки)</h3>
+                    <div class="grid-2">
+                        <div class="form-row"><label>Куб (°C)</label><input type="number" id="setpointBoiler" step="0.1" value="78.0"></div>
+                        <div class="form-row"><label>Охладитель (°C)</label><input type="number" id="setpointCooler" step="0.1" value="35.0"></div>
+                    </div>
+                    <div class="form-row"><label>Температура дистилляции (°C)</label><input type="number" id="distTargetTemp" step="0.1" value="78.0"></div>
+                </div>
+                <div class="card">
+                    <h3>Ёмкость</h3>
+                    <div class="form-row"><label>Предупреждение %</label><input type="number" id="warningPct" value="90"></div>
+                    <label><input type="checkbox" id="autoStop" checked> Авто-стоп при заполнении</label>
+                </div>
+            </div>
+            
+            <!-- Config -->
+            <div class="sub-content" id="sub-config">
+                <div class="card">
+                    <h3>Датчики 
+                        <button class="btn btn-sm" id="btnCalibrate" title="Калибровка">📐 Калибровать</button>
+                        <button class="btn btn-sm" id="btnScanSensors">🔍 Сканировать</button>
+                    </h3>
+                    <div id="calibProgress" style="display:none;margin:8px 0;padding:8px;background:var(--info);border-radius:4px">
+                        Калибровка: <span id="calibPercent">0</span>% 
+                        <span id="calibTemps" style="font-size:0.85em"></span>
+                    </div>
+                    <table class="logs-table" id="sensorsTable">
+                        <thead><tr><th>Адрес</th><th>Роль</th><th>Имя</th><th>Temp</th><th>Смещ</th><th>Калибр</th><th>Актив</th><th></th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="card">
+                    <h3>Нагреватель</h3>
+                    <div class="form-row">
+                        <label><input type="radio" name="heater" value="gas" checked> Газ (ESP-NOW)</label>
+                        <label><input type="radio" name="heater" value="electric"> Электрический</label>
+                    </div>
+                    <div class="form-row"><label>MAC Газа</label><input type="text" id="macGas" placeholder="AA:BB:CC:DD:EE:FF" style="width: 180px"></div>
+                    <div class="form-row"><label>MAC Уровня</label><input type="text" id="macLevel" placeholder="11:22:33:44:55:66" style="width: 180px"></div>
+                </div>
+            </div>
+            
+            <!-- Network -->
+            <div class="sub-content" id="sub-network">
+                <div class="card">
+                    <h3>WiFi</h3>
+                    <div class="form-row"><label>SSID</label><input type="text" id="wifiSsid"></div>
+                    <div class="form-row"><label>Пароль</label><input type="password" id="wifiPass"></div>
+                    <div class="btn-group" style="margin-bottom:8px">
+                        <button class="btn btn-sm" id="btnScanWifi">🔍 Сканировать</button>
+                        <button class="btn btn-sm btn-primary" id="btnSaveWifi">Сохранить</button>
+                    </div>
+                    <div id="wifiResults" style="max-height:150px;overflow-y:auto;background:var(--bg);border-radius:6px;margin-top:8px"></div>
+                </div>
+                <div class="card">
+                    <h3>MQTT</h3>
+                    <label style="margin-bottom: 12px; display: block;"><input type="checkbox" id="mqttEnabled"> Включён</label>
+                    <div class="form-row"><label>Host</label><input type="text" id="mqttHost" style="width: 200px"></div>
+                    <div class="form-row"><label>Порт</label><input type="number" id="mqttPort" value="1883" style="width: 80px"></div>
+                    <div class="form-row"><label>Пользователь</label><input type="text" id="mqttUser"></div>
+                    <div class="form-row"><label>Пароль</label><input type="password" id="mqttPass"></div>
+                    <div class="form-row"><label>Topic</label><input type="text" id="mqttTopic" style="width: 200px"></div>
+                </div>
+                <div class="card">
+                    <h3>OTA</h3>
+                    <label style="margin-bottom: 12px; display: block;"><input type="checkbox" id="otaEnabled"> Включён</label>
+                    <div class="form-row"><label>Пароль</label><input type="password" id="otaPass"></div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 16px">
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="btnSaveAll">СОХРАНИТЬ ВСЕ</button>
+                    <button class="btn" id="btnReboot">ПЕРЕЗАГРУЗИТЬ</button>
+                    <button class="btn btn-danger" id="btnResetDefault">СБРОС</button>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <div id="toasts"></div>
+    <script src="app.js?v=9"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+{
+  "system": {
+    "device_name": "RectController_S3",
+    "wifi_ssid": "",
+    "wifi_pass": "",
+    "mode": "rectification"
+  },
+  "sensors": [
+    {
+      "address": "28FFFFFFFFFFFFFF",
+      "role": "column_top",
+      "name": "Верх колонны",
+      "calibrate": true,
+      "offset": 0.0,
+      "manual_offset": 0.0,
+      "active": true
+    },
+    {
+      "address": "28FFFFFFFFFFFFFF",
+      "role": "head_selection",
+      "name": "Узел отбора голов",
+      "calibrate": true,
+      "offset": 0.0,
+      "manual_offset": 0.0,
+      "active": true
+    },
+    {
+      "address": "28FFFFFFFFFFFFFF",
+      "role": "body_selection",
+      "name": "Узел отбора тела",
+      "calibrate": true,
+      "offset": 0.0,
+      "manual_offset": 0.0,
+      "active": true
+    },
+    {
+      "address": "28FFFFFFFFFFFFFF",
+      "role": "cooler",
+      "name": "Охлаждающая жидкость",
+      "calibrate": false,
+      "offset": 0.0,
+      "manual_offset": 0.0,
+      "active": true
+    }
+  ],
+  "heater": {
+    "type": "ELECTRIC",
+    "pin_pwm": 17,
+    "pin_cooler": 18,
+    "espnow_mac_gas": "00:00:00:00:00:00"
+  },
+  "phase_thresholds": {
+    "heads_end": 1.2,
+    "body_end": 0.3,
+    "delta_hysteresis": 0.1
+  },
+  "pid_cube": {
+    "kp": 2.0,
+    "ki": 0.5,
+    "kd": 1.0,
+    "out_min": 0.0,
+    "out_max": 100.0,
+    "integral_max": 50.0
+  },
+  "pid_cooler": {
+    "kp": 3.0,
+    "ki": 0.3,
+    "kd": 1.5,
+    "out_min": 0.0,
+    "out_max": 100.0,
+    "integral_max": 50.0
+  },
+  "mqtt": {
+    "enabled": false,
+    "host": "",
+    "port": 1883,
+    "user": "",
+    "pass": "",
+    "topic_root": "distill"
+  },
+  "logging": {
+    "path": "/log",
+    "max_files": 10,
+    "rotation_mb": 2
+  },
+  "tft": {
+    "enabled": false,
+    "controller": "ILI9341",
+    "spi_clk": 40,
+    "spi_mosi": 23,
+    "spi_miso": 19,
+    "spi_cs": 5,
+    "spi_dc": 21,
+    "spi_rst": 18,
+    "backlight": 4
+  }
+}

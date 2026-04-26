@@ -1,0 +1,7 @@
+{
+  "containers": [
+    { "id": 1, "name": "Банка 1Л", "volume_ml": 1000, "diameter_mm": 100 },
+    { "id": 2, "name": "Банка 2Л", "volume_ml": 2000, "diameter_mm": 150 }
+  ],
+  "selected_id": 1
+}

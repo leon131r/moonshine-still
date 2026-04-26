@@ -1,0 +1,38 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Compiled files
+*.bin
+*.elf
+*.map
+*.o
+*.a
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Secrets
+*.pem
+*.key
+*.crt
+
+# Node modules (if any)
+node_modules/
+
+# Build artifacts
+build/
+dist/

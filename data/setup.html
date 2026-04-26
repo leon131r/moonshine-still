@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>WiFi Setup — RectController</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0d1b2a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container { max-width: 420px; margin: 0 auto; }
+
+        /* Шапка */
+        h1 {
+            text-align: center;
+            font-size: 1.3rem;
+            margin-bottom: 0.25rem;
+            color: #00c853;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8892a4;
+            font-size: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Шаги */
+        .step {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .step.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
+
+        .step-title {
+            font-size: 0.85rem;
+            color: #2196f3;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Кнопки */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 0.75rem;
+        }
+        .btn:active { opacity: 0.7; transform: scale(0.98); }
+        .btn-primary { background: #2196f3; color: #fff; }
+        .btn-success { background: #00c853; color: #000; }
+        .btn-warning { background: transparent; color: #8892a4; border: 1px solid #333; }
+        .btn-danger { background: #ff1744; color: #fff; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Сети */
+        .network-item {
+            display: flex;
+            align-items: center;
+            padding: 0.85rem;
+            background: #16213e;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .network-item:hover { background: #1a3a5c; }
+        .network-item.selected { border-color: #2196f3; background: #0f3460; }
+
+        /* Полоски сигнала */
+        .bars {
+            display: flex; gap: 2px; margin-right: 0.75rem;
+            align-items: flex-end; height: 16px;
+        }
+        .bars span {
+            display: block; width: 4px; background: #333; border-radius: 1px;
+        }
+        .bars .on { background: #00c853; }
+
+        .net-name {
+            flex: 1; font-size: 0.95rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .net-lock { margin-left: 0.5rem; font-size: 0.85rem; }
+
+        /* Форма пароля */
+        .pass-section {
+            background: #16213e;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 0.75rem;
+            display: none;
+        }
+        .pass-section.visible { display: block; }
+
+        .pass-section .chosen-net {
+            font-weight: 600;
+            color: #2196f3;
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+
+        .pass-section input {
+            width: 100%;
+            padding: 0.85rem;
+            background: #0d1b2a;
+            color: #e0e0e0;
+            border: 1px solid #333;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .pass-section input:focus {
+            outline: none;
+            border-color: #2196f3;
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+        }
+
+        .show-pass {
+            display: inline-block;
+            background: none;
+            border: none;
+            color: #2196f3;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+
+        /* Статус */
+        #status {
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-top: 0.75rem;
+            display: none;
+        }
+        #status.show { display: block; }
+        #status.info { background: #1a3a5c; color: #2196f3; }
+        #status.ok { background: #1a3a2a; color: #00c853; }
+        #status.err { background: #3a1a1a; color: #ff1744; }
+
+        /* Спиннер */
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Подсказка */
+        .hint {
+            text-align: center;
+            color: #555;
+            font-size: 0.75rem;
+            margin-top: 1.5rem;
+        }
+        .hint a {
+            color: #2196f3;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 WiFi Setup</h1>
+        <p class="subtitle">Подключение RectController S3 к вашей сети</p>
+
+        <!-- Шаг 1: Сканирование -->
+        <div class="step active" id="step1">
+            <div class="step-title">Шаг 1: Выберите сеть</div>
+            <button class="btn btn-primary" id="btnScan">🔍 Сканировать сети</button>
+            <div id="networks"></div>
+        </div>
+
+        <!-- Шаг 2: Пароль (появляется после выбора сети) -->
+        <div class="step" id="step2">
+            <div class="pass-section" id="passSection">
+                <div class="step-title">Шаг 2: Введите пароль</div>
+                <div class="chosen-net" id="chosenNet">—</div>
+                <input type="password" id="passInput" placeholder="Пароль от WiFi" autocomplete="off">
+                <button class="show-pass" id="togglePass">👁 Показать пароль</button>
+                <button class="btn btn-success" id="btnSave">💾 Сохранить</button>
+                <button class="btn btn-warning" id="btnBack">← Назад к списку</button>
+            </div>
+        </div>
+
+        <!-- Статус -->
+        <div id="status"></div>
+
+        <!-- Перезагрузка (всегда видна) -->
+        <div style="margin-top: 1.5rem;">
+            <button class="btn btn-danger" id="btnReboot">🔄 Перезагрузить</button>
+        </div>
+
+        <p class="hint">
+            Не работает? <a href="/">Перейти на главную</a>
+        </p>
+    </div>
+
+    <script>
+        const btnScan = document.getElementById('btnScan');
+        const networksEl = document.getElementById('networks');
+        const passSection = document.getElementById('passSection');
+        const chosenNet = document.getElementById('chosenNet');
+        const passInput = document.getElementById('passInput');
+        const togglePass = document.getElementById('togglePass');
+        const btnSave = document.getElementById('btnSave');
+        const btnBack = document.getElementById('btnBack');
+        const btnReboot = document.getElementById('btnReboot');
+        const statusEl = document.getElementById('status');
+
+        let selectedSSID = '';
+
+        function setStatus(msg, type) {
+            statusEl.textContent = msg;
+            statusEl.className = 'show ' + type;
+        }
+
+        function clearStatus() {
+            statusEl.className = '';
+        }
+
+        // --- Полоски сигнала ---
+        function bars(rssi) {
+            const levels = [-90, -80, -70, -60, -50];
+            let count = 0;
+            for (let l of levels) { if (rssi >= l) count++; }
+            let h = '';
+            for (let i = 0; i < 5; i++) {
+                const heights = [4, 7, 10, 14, 18];
+                const cls = i < count ? ' on' : '';
+                h += `<span style="height:${heights[i]}px" class="${cls}"></span>`;
+            }
+            return `<div class="bars">${h}</div>`;
+        }
+
+        // --- Сканирование ---
+        btnScan.addEventListener('click', async () => {
+            console.log('[SETUP] Start scan...');
+            btnScan.disabled = true;
+            btnScan.innerHTML = '<span class="spinner"></span> Сканирую...';
+            setStatus('Сканирую сети (не отключайтесь)...', 'info');
+            networksEl.innerHTML = '';
+            passSection.classList.remove('visible');
+
+            try {
+                const res = await fetch('/api/wifi/scan');
+                console.log('[SETUP] Scan response:', res.status);
+                if (!res.ok) throw new Error('Ошибка сервера: ' + res.status);
+                const data = await res.json();
+                console.log('[SETUP] Networks found:', data.networks ? data.networks.length : 0);
+
+                if (!data.networks || data.networks.length === 0) {
+                    setStatus('Сети не найдены. Попробуйте ещё раз.', 'err');
+                    btnScan.disabled = false;
+                    btnScan.innerHTML = '🔍 Сканировать сети';
+                    return;
+                }
+
+                // Убираем дубли
+                const seen = new Set();
+                const unique = data.networks.filter(n => {
+                    if (!n.ssid || seen.has(n.ssid)) return false;
+                    seen.add(n.ssid);
+                    return true;
+                });
+
+                networksEl.innerHTML = '';
+                unique.forEach(n => {
+                    const div = document.createElement('div');
+                    div.className = 'network-item';
+                    div.dataset.ssid = n.ssid;
+                    const locked = n.auth !== 'open';
+                    div.innerHTML = `
+                        ${bars(n.rssi)}
+                        <span class="net-name">${esc(n.ssid)}</span>
+                        <span class="net-lock">${locked ? '🔒' : '🔓'}</span>
+                    `;
+                    div.addEventListener('click', () => selectNet(n.ssid, locked, div));
+                    networksEl.appendChild(div);
+                });
+
+                clearStatus();
+                setStatus(`Найдено ${unique.length} сетей. Нажмите на свою.`, 'info');
+
+            } catch (e) {
+                console.error('[SETUP] Scan error:', e);
+                setStatus('Ошибка сканирования: ' + e.message, 'err');
+            }
+
+            btnScan.disabled = false;
+            btnScan.innerHTML = '🔍 Сканировать сети';
+        });
+
+        // --- Выбор сети ---
+        function selectNet(ssid, locked, el) {
+            console.log('[SETUP] Selected:', ssid, 'locked:', locked);
+            document.querySelectorAll('.network-item').forEach(d => d.classList.remove('selected'));
+            el.classList.add('selected');
+
+            selectedSSID = ssid;
+            chosenNet.textContent = (locked ? '🔒 ' : '🔓 ') + ssid;
+            passSection.classList.add('visible');
+            passInput.value = '';
+
+            // КРИТИЧЕСКИ ВАЖНО: активируем step2 чтобы он стал видимым
+            document.getElementById('step2').classList.add('active');
+
+            if (!locked) {
+                passInput.style.display = 'none';
+                togglePass.style.display = 'none';
+            } else {
+                passInput.style.display = 'block';
+                togglePass.style.display = 'inline';
+                setTimeout(() => passInput.focus(), 100);
+            }
+
+            passSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // --- Показать/скрыть пароль ---
+        togglePass.addEventListener('click', () => {
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                togglePass.textContent = '🙈 Скрыть';
+            } else {
+                passInput.type = 'password';
+                togglePass.textContent = '👁 Показать';
+            }
+        });
+
+        // --- Назад ---
+        btnBack.addEventListener('click', () => {
+            passSection.classList.remove('visible');
+            selectedSSID = '';
+            document.querySelectorAll('.network-item').forEach(d => d.classList.remove('selected'));
+            clearStatus();
+        });
+
+        // --- Сохранить ---
+        btnSave.addEventListener('click', async () => {
+            btnSave.disabled = true;
+            btnSave.innerHTML = '<span class="spinner"></span> Сохраняю...';
+            setStatus('Сохраняю настройки...', 'info');
+
+            try {
+                const res = await fetch('/api/wifi/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ssid: selectedSSID, password: passInput.value })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    setStatus('✅ Сохранено! Нажмите "Перезагрузить" для подключения.', 'ok');
+                    passSection.classList.remove('visible');
+                    networksEl.innerHTML = '';
+                } else {
+                    setStatus('❌ ' + (data.message || 'Ошибка'), 'err');
+                }
+            } catch (e) {
+                setStatus('❌ Ошибка сети: ' + e.message, 'err');
+            }
+
+            btnSave.disabled = false;
+            btnSave.innerHTML = '💾 Сохранить';
+        });
+
+        // --- Перезагрузка ---
+        btnReboot.addEventListener('click', async () => {
+            if (!confirm('Перезагрузить устройство?')) return;
+            btnReboot.disabled = true;
+            btnReboot.innerHTML = '<span class="spinner"></span> Перезагрузка...';
+
+            try {
+                await fetch('/api/reboot', { method: 'POST' });
+                setStatus('Перезагрузка...', 'info');
+                setTimeout(() => {
+                    // Пробуем открыть главную (если подключился к WiFi)
+                    window.location.href = '/';
+                }, 12000);
+            } catch (e) {
+                setStatus('Перезагрузка отправлена. Подождите 10 сек...', 'info');
+                setTimeout(() => { window.location.href = '/'; }, 12000);
+            }
+        });
+
+        // --- Enter для сохранения ---
+        passInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') btnSave.click();
+        });
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+    </script>
+</body>
+</html>
